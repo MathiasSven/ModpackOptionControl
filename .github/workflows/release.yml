@@ -1,0 +1,41 @@
+name: release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: validate gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: build fabric mod
+        run: ./gradlew :fabric:build
+      - name: build gui distributable
+        run: ./gradlew :gui:packageTarGz
+      - name: rename gui tar.gz
+        run: |
+          mv gui/build/compose/binaries/main/moc-linux.tar.gz \
+            moc-gui-${{ github.ref_name }}-linux.tar.gz
+      - name: create release
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          files: |
+            fabric/build/libs/moc-${{ github.ref_name }}.jar
+            moc-gui-${{ github.ref_name }}-linux.tar.gz
+          generate_release_notes: true
